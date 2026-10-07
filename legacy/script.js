@@ -1,5 +1,4 @@
-// ===== Site config — REPLACE with real details =====
-const CONFIG = {
+jconst CONFIG = {
   whatsapp: '917710242183', // country code + number, digits only
   email: 'hello@digitroot.in',
 };
