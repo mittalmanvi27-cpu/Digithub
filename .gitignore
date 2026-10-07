@@ -7,3 +7,6 @@ out/
 next-env.d.ts
 __pycache__/
 legacy/server/.env
+.vercel
+.env*
+!.env.example
