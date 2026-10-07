@@ -466,6 +466,88 @@ function focusAudit() {
   setTimeout(() => $('#auditUrl')?.focus({ preventScroll: true }), 600);
 }
 
+// ----- Live AI (RAG over our own site content, streamed from /api/chat) -----
+assist.ai = false;
+assist.history = [];
+if (location.protocol.startsWith('http')) {
+  fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => {
+    if (!h || !h.ai) return;
+    assist.ai = true;
+    const sub = $('.assist__head small');
+    if (sub) sub.innerHTML = '<i></i> AI-powered · answers from our site';
+  }).catch(() => {});
+}
+
+async function askAI(question) {
+  setQuick([]);
+  const bubble = document.createElement('div');
+  bubble.className = 'msg msg--bot msg--typing';
+  bubble.innerHTML = '<i></i><i></i><i></i>';
+  assist.log.appendChild(bubble);
+  assist.log.scrollTop = assist.log.scrollHeight;
+
+  let answer = '';
+  let sources = [];
+  let failed = '';
+  const history = assist.history.slice(-8);
+  assist.history.push({ role: 'user', content: question });
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: question, history }),
+    });
+    if (!res.ok || !res.body) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'unavailable');
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) !== -1) {
+        const raw = buf.slice(0, i); buf = buf.slice(i + 2);
+        const ev = (raw.match(/^event: (.*)$/m) || [])[1];
+        const data = JSON.parse((raw.match(/^data: (.*)$/m) || [])[1] || 'null');
+        if (ev === 'sources') sources = data || [];
+        else if (ev === 'delta') {
+          if (!answer) { bubble.className = 'msg msg--bot'; bubble.textContent = ''; }
+          answer += data.text;
+          bubble.textContent = answer;
+          assist.log.scrollTop = assist.log.scrollHeight;
+        } else if (ev === 'error') failed = data.message;
+      }
+    }
+  } catch (e) {
+    failed = failed || '';
+    if (!answer) {
+      bubble.remove();
+      assist.history.pop();
+      const hit = Object.keys(KB).find((key) => KB[key].k.test(question));
+      if (hit) return say(hit);
+      return bot(e.message && e.message !== 'unavailable' ? e.message : "I couldn't reach our AI just now. Want to continue on WhatsApp?", ['Open WhatsApp', 'Recommend a plan']);
+    }
+  }
+  if (failed && !answer) { bubble.className = 'msg msg--bot'; bubble.textContent = failed; }
+  if (answer) {
+    assist.history.push({ role: 'assistant', content: answer });
+    assist.transcript.push(`Visitor: ${question}`, `Digi: ${answer}`);
+    if (sources.length) {
+      const src = document.createElement('div');
+      src.className = 'msg__src';
+      src.innerHTML = '<span>Sources</span>' + sources.map((s) =>
+        `<a href="${(HOME ? HOME.replace(/index\.html$/, '') : '') + s.url.replace(/^\//, '')}">${s.title.replace(/[<>&]/g, '')}</a>`).join('');
+      assist.log.appendChild(src);
+    }
+  } else assist.history.pop();
+  assist.log.scrollTop = assist.log.scrollHeight;
+  setQuick(['Recommend a plan', 'Free audit', 'Talk to a human']);
+}
+
 function handle(raw) {
   const text = raw.trim();
   if (!text) return;
@@ -502,6 +584,7 @@ function handle(raw) {
   };
   if (actions[text]) return actions[text]();
 
+  if (assist.ai) return askAI(text);
   const hit = Object.keys(KB).find((key) => KB[key].k.test(text));
   if (hit) return say(hit);
   bot("Good question — that's best answered by a specialist. Want to continue on WhatsApp, or shall I recommend a plan?", ['Open WhatsApp', 'Recommend a plan', 'Pricing']);
@@ -545,3 +628,180 @@ document.addEventListener('keydown', (e) => {
 
 // Deep link: digitroot.in/#chat opens the assistant
 if (location.hash === '#chat') openAssist(true);
+
+/* =========================================================
+   Motion layer — loader, cursor, split headings, tilt, etc.
+   ========================================================= */
+(() => {
+  const root = document.documentElement;
+
+  // ----- Intro loader (home page, once per session) -----
+  const loader = $('#loader');
+  if (loader) {
+    if (root.classList.contains('intro')) {
+      store.set('dr_intro', '1');
+      setTimeout(() => {
+        loader.classList.add('is-out');
+        root.classList.remove('intro');
+        setTimeout(() => loader.remove(), 900);
+      }, 1500);
+    } else loader.remove();
+  }
+  if (reduce) return;
+
+  // ----- Page scroll progress -----
+  if (!$('#progress')) {
+    const bar = document.createElement('div');
+    bar.className = 'progress';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bar);
+    const upd = () => {
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      bar.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + '%';
+    };
+    upd();
+    window.addEventListener('scroll', upd, { passive: true });
+  }
+
+  // ----- Split headings: words rise in -----
+  const splitTargets = $$('.head h2, .wwd__top h2, .ai h2, .contact__title, .blog-hero h1, .svc-group__head h2, .related h2, .founding h3, .audit h2');
+  const wrapWord = (html) => `<span class="sw"><span>${html}</span></span>`;
+  splitTargets.forEach((h) => {
+    if (h.dataset.split) return;
+    h.dataset.split = '1';
+    const parts = [];
+    h.childNodes.forEach((n) => {
+      if (n.nodeType === 3) {
+        n.textContent.split(/(\s+)/).forEach((w) => { if (w.trim()) parts.push(wrapWord(w)); else if (w) parts.push(' '); });
+      } else if (n.nodeName === 'BR') parts.push('<br>');
+      else parts.push(wrapWord(n.outerHTML));
+    });
+    h.innerHTML = parts.join('');
+    $$('.sw > span', h).forEach((s, i) => { s.style.transitionDelay = `${i * 55}ms`; });
+    h.classList.add('split');
+  });
+
+  // ----- Extra staggered reveals -----
+  const extra = $$('.plan, .post, .svc, .step, .faq__list details, .compare__row, .industries li, .ai-card, .contact__list li, .scan li, .calc__inputs, .calc__out, .footer__grid > div, .newsletter');
+  extra.forEach((el) => {
+    if (el.classList.contains('reveal')) return;
+    el.classList.add('reveal', 'reveal--soft');
+    const sibs = [...el.parentElement.children];
+    el.style.transitionDelay = `${Math.min(sibs.indexOf(el), 6) * 70}ms`;
+  });
+
+  const io2 = new IntersectionObserver((entries) => entries.forEach((en) => {
+    if (!en.isIntersecting) return;
+    en.target.classList.add('is-in');
+    io2.unobserve(en.target);
+  }), { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
+  [...splitTargets, ...extra].forEach((el) => io2.observe(el));
+
+  // ----- Footer wordmark letters -----
+  const word = $('.footer__word');
+  if (word) {
+    word.innerHTML = [...word.textContent].map((c, i) => `<span style="transition-delay:${i * 45}ms">${c}</span>`).join('');
+    word.classList.add('split-letters');
+    io2.observe(word);
+  }
+
+  // ----- Process line fills on scroll -----
+  const steps = $('.steps');
+  if (steps) {
+    const fillSteps = () => {
+      const r = steps.getBoundingClientRect();
+      const p = Math.min(Math.max((window.innerHeight * 0.7 - r.top) / r.height, 0), 1);
+      steps.style.setProperty('--prog', p.toFixed(3));
+      $$('.step', steps).forEach((s) => s.classList.toggle('is-lit', s.getBoundingClientRect().top < window.innerHeight * 0.7));
+    };
+    fillSteps();
+    window.addEventListener('scroll', fillSteps, { passive: true });
+  }
+
+  // ----- Animated calculator numbers -----
+  const tweenTargets = ['#rExtra', '#rNow', '#rNew', '#rYear'].map((s) => $(s)).filter(Boolean);
+  if (tweenTargets.length) {
+    const parse = (t) => {
+      const m = t.replace(/[+₹,\s]/g, '');
+      let n = parseFloat(m);
+      if (/Cr$/.test(m)) n *= 1e7; else if (/L$/.test(m)) n *= 1e5;
+      return isNaN(n) ? 0 : n;
+    };
+    tweenTargets.forEach((el) => {
+      let last = parse(el.textContent);
+      let busy = false;
+      new MutationObserver(() => {
+        if (busy) return;
+        const target = parse(el.textContent);
+        const plus = el.textContent.trim().startsWith('+');
+        const from = last; last = target;
+        if (Math.abs(target - from) < 1) return;
+        const t0 = performance.now(), dur = 500;
+        const step = (now) => {
+          const p = Math.min((now - t0) / dur, 1);
+          const v = from + (target - from) * (1 - Math.pow(1 - p, 3));
+          busy = true;
+          el.textContent = (plus ? '+' : '') + inr(v);
+          busy = false;
+          if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }).observe(el, { childList: true, characterData: true, subtree: true });
+    });
+  }
+
+  if (!finePointer) return;
+
+  // ----- 3D tilt on cards -----
+  $$('.wcard, .plan, .post, .svc, .ai-card').forEach((card) => {
+    card.addEventListener('pointermove', (e) => {
+      card.classList.add('tilt');
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = `perspective(900px) rotateX(${(-y * 7).toFixed(2)}deg) rotateY(${(x * 7).toFixed(2)}deg) translateY(-6px)`;
+    });
+    card.addEventListener('pointerleave', () => { card.style.transform = ''; });
+  });
+
+  // ----- Cursor ring -----
+  const ring = document.createElement('div');
+  ring.className = 'cursor-ring';
+  ring.setAttribute('aria-hidden', 'true');
+  const dot = document.createElement('div');
+  dot.className = 'cursor-dot';
+  dot.setAttribute('aria-hidden', 'true');
+  document.body.append(ring, dot);
+  let mx = -100, my = -100, rx = -100, ry = -100;
+  window.addEventListener('pointermove', (e) => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx}px, ${my}px)`;
+    root.classList.add('has-cursor');
+  }, { passive: true });
+  document.addEventListener('pointerleave', () => root.classList.remove('has-cursor'));
+  const follow = () => {
+    rx += (mx - rx) * 0.18; ry += (my - ry) * 0.18;
+    ring.style.transform = `translate(${rx}px, ${ry}px)`;
+    requestAnimationFrame(follow);
+  };
+  requestAnimationFrame(follow);
+  const hoverSel = 'a, button, input, select, textarea, label, summary, [role="tab"]';
+  document.addEventListener('pointerover', (e) => ring.classList.toggle('is-hover', !!e.target.closest(hoverSel)));
+  document.addEventListener('pointerdown', () => ring.classList.add('is-down'));
+  document.addEventListener('pointerup', () => ring.classList.remove('is-down'));
+
+  // ----- Click ripple on buttons -----
+  document.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.btn, .btn-glow, .btn-ghost, .tab, .seg, .filter, .qr');
+    if (!b) return;
+    const r = b.getBoundingClientRect();
+    const s = document.createElement('span');
+    s.className = 'ripple';
+    const size = Math.max(r.width, r.height) * 2;
+    s.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px`;
+    if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
+    b.style.overflow = 'hidden';
+    b.appendChild(s);
+    setTimeout(() => s.remove(), 650);
+  });
+})();
