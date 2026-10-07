@@ -1,48 +1,51 @@
 # Digitroot website
 
-Marketing site for Digitroot with **Digi**, an AI assistant that answers visitor questions using retrieval-augmented generation (RAG) over the site's own content.
+Next.js 16 (App Router, TypeScript, Tailwind CSS 4) marketing site with three AI automations powered by Claude (`claude-opus-5-5`).
 
 ## Run locally
 
 ```bash
-pip install -r requirements.txt
-cp server/.env.example server/.env   # then add your ANTHROPIC_API_KEY
-python server/app.py                 # http://localhost:5500/
+npm install
+cp .env.example .env.local     # add ANTHROPIC_API_KEY (everything else optional)
+npm run dev                    # http://localhost:3000
 ```
 
-On Windows you can double-click `start-server.bat`.
+Production: `npm run build && npm start`, or push to GitHub and import the repo on [Vercel](https://vercel.com) (add the same env vars there).
 
-Without an API key the site still runs, and Digi falls back to its built-in guided answers.
+Without an API key the site still works fully: the chat falls back to guided answers, the audit shows its automated scores without the written report, and leads are still delivered (just not AI-scored).
 
-## How Digi works
+## AI automations
 
-```
-browser (script.js)                    server/app.py                         Claude API
-──────────────────                     ─────────────                         ──────────
-question ──POST /api/chat──▶  1. retrieve: BM25 over site chunks (rag.py)
-                              2. build prompt: system rules + top-6 chunks
-                                 + last 8 turns of the conversation
-                              3. stream ───────────────────────────────────▶ claude-opus-5-5
-◀── SSE: sources, delta… ──  4. relay tokens as Server-Sent Events  ◀────── text stream
-render answer + source links
-```
+| Feature | Where | What it does |
+|---|---|---|
+| **Instant AI website audit** | `/audit`, hero input | Fetches the visitor's homepage (blocking internal or private addresses), runs 26 checks across SEO, AI-search readiness, conversion and technical health, then Claude streams a prioritised report and 90-day plan. A "Get my free review" form turns it into a lead with the audit attached. Optional `PAGESPEED_API_KEY` adds real Lighthouse / Core Web Vitals. |
+| **Digi, the AI assistant** | Floating "Ask Digi" + buttons across the site | Retrieval-augmented chat: BM25 search over services, pricing, FAQ, blog posts and `content/knowledge/*.md`; answers stream in English, Hindi or Hinglish with source links. |
+| **AI lead scoring and routing** | Contact form, pricing "Choose" buttons, calculator, audit | The response returns instantly; then in the background Claude scores the lead (hot/warm/cold, 0–100), picks the right service, writes a next action and drafts a WhatsApp reply in the lead's language. The result is sent to `LEAD_WEBHOOK_URL` (Make, Zapier, n8n, Slack…) and/or emailed through Resend, with a one-click "Reply on WhatsApp" link. |
 
-- **Knowledge base** (`server/rag.py`): parses `index.html`, `services.html`, every `blog/*.html` article and `server/knowledge/*.md` into heading-scoped chunks at startup (about 120 chunks). Site chrome (header, footer, chat widget, decorative visuals) is excluded.
-- **Retrieval**: Okapi BM25 ranking with light stemming and a Hinglish/synonym map ("kitna paisa" → price, "insta" → meta). Pure standard library. Test it with `python server/rag.py <query>`.
-- **Generation**: the Anthropic Python SDK with streaming, low effort for short chat replies, prompt caching on the system prompt, and server-side refusal fallback (`fallbacks: "default"`).
-- **Guardrails**: answers only from site context, never invents prices or results, 800-char message cap, 12 requests/min per IP, `server/` and dotfiles are never served.
+All Claude calls use server-side refusal fallback (`fallbacks: "default"`), prompt caching on system prompts, and per-IP rate limits (chat 12/min, audit 5 per 10 min, leads 5 per 10 min). The rate limits are counted per server instance; for heavy traffic, put a shared store or your host's firewall rate limit in front.
+
+## SEO / AI-search built in
+
+Static pre-rendering, `sitemap.xml`, `robots.txt`, a generated OG image, Organization + FAQ + BlogPosting JSON-LD, and `/llms.txt` (a plain-text brief for ChatGPT/Gemini/Perplexity). Old `.html` URLs (`/services.html`, `/blog/*.html`) 308-redirect to the new routes.
 
 ## Updating content
 
-- Edit prices, contact details or policies in `server/knowledge/company.md`, and the matching text in `index.html`.
-- New blog posts in `blog/` are indexed automatically on the next server start.
-
-## Files
-
-| Path | Purpose |
+| What | File |
 |---|---|
-| `index.html`, `services.html`, `blog/` | Site pages |
-| `styles.css`, `script.js` | Design system, interactions, chat client |
-| `server/app.py` | Static server + `/api/health` + `/api/chat` (SSE) |
-| `server/rag.py` | Chunking and BM25 retrieval |
-| `server/knowledge/` | Extra facts for the assistant (pricing, policies, contact) |
+| Contact details, FAQ, comparison table, industries | `lib/site.ts` |
+| Services (8 groups, 46 services) | `lib/services.ts` |
+| Pricing plans | `lib/pricing.ts` |
+| Extra facts for Digi (policies, timelines…) | `content/knowledge/company.md` |
+| Blog posts | add `content/blog/<slug>.md` with frontmatter `title, description, category, date, readTime` — Markdown or HTML body |
+
+Digi's knowledge base rebuilds from these files automatically.
+
+## Structure
+
+```
+app/                 pages, API routes (api/chat, api/audit, api/lead, api/health), sitemap, robots, llms.txt, OG image
+components/          header, footer, chat widget, audit tool, pricing, calculator, contact form
+lib/                 site data, knowledge base (BM25), audit engine, SSRF-safe fetch, lead scoring, AI client
+content/             blog posts + knowledge for Digi
+legacy/              previous static HTML + Python version, kept for reference (safe to delete)
+```
