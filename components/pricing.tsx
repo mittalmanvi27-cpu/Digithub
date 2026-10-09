@@ -3,16 +3,17 @@
 import { useState } from 'react'
 import clsx from 'clsx'
 import { Check } from 'lucide-react'
-import { pricing } from '@/lib/pricing'
+import { pricing, type PricingTab } from '@/lib/pricing'
 import { prefillLead } from './contact-form'
 
-export function Pricing() {
-  const [tab, setTab] = useState(pricing[0].id)
+/** All plans with tabs, or just one tab's plans via `only` (service pages). */
+export function Pricing({ only }: { only?: PricingTab['id'] }) {
+  const [tab, setTab] = useState(only ?? pricing[0].id)
   const current = pricing.find((p) => p.id === tab)!
 
   return (
     <div>
-      <div className="mx-auto mb-10 flex w-fit gap-1 rounded-full border border-text/[0.08] bg-white p-1 shadow-sm" role="tablist">
+      <div hidden={!!only} className="mx-auto mb-10 flex w-fit gap-1 rounded-full border border-text/[0.08] bg-white p-1 shadow-sm" role="tablist">
         {pricing.map((p) => (
           <button
             key={p.id}

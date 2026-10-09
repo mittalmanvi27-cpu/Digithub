@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { serviceGroups } from '@/lib/services'
+import { serviceHref } from '@/lib/service-pages'
 import { site, whatsappLink } from '@/lib/site'
 import { Logo } from './ui'
 
@@ -16,9 +17,9 @@ export function Footer() {
         <div>
           <p className="mb-4 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-white/35">Services</p>
           <ul className="space-y-2.5 text-[0.9rem]">
-            {serviceGroups.slice(0, 6).map((g) => (
+            {serviceGroups.slice(0, 7).map((g) => (
               <li key={g.id}>
-                <Link href={`/services#${g.id}`} className="transition hover:text-white">
+                <Link href={serviceHref(g.id)} className="transition hover:text-white">
                   {g.name}
                 </Link>
               </li>
@@ -71,7 +72,11 @@ export function Footer() {
       </div>
       <div className="container-x flex flex-col justify-between gap-3 border-t border-white/[0.07] py-6 text-[0.8rem] text-white/35 sm:flex-row">
         <p>© {new Date().getFullYear()} Digitroot. All rights reserved.</p>
-        <p>Prices exclude GST. Results vary by market and starting point.</p>
+        <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal">
+          <Link href="/privacy-policy" className="transition hover:text-white">Privacy policy</Link>
+          <Link href="/terms" className="transition hover:text-white">Terms</Link>
+          <span>Prices exclude GST. Results vary by market and starting point.</span>
+        </nav>
       </div>
       <p aria-hidden="true" className="pointer-events-none select-none text-center text-[clamp(5rem,21vw,19rem)] font-semibold leading-[0.75] tracking-[-0.06em] text-white/[0.03]">
         digitroot

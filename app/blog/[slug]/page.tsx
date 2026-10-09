@@ -6,6 +6,7 @@ import { formatDate, getPost, getPosts } from '@/lib/blog'
 import { site } from '@/lib/site'
 import { ChatButton } from '@/components/chat-button'
 import { LogoMark } from '@/components/ui'
+import { JsonLd, breadcrumbSchema } from '@/components/json-ld'
 
 export const dynamicParams = false
 
@@ -35,6 +36,9 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     headline: post.title,
     description: post.description,
     datePublished: post.date,
+    dateModified: post.date,
+    image: `${site.url}/opengraph-image`,
+    inLanguage: 'en-IN',
     author: { '@type': 'Organization', name: 'Digitroot Team', url: site.url },
     publisher: { '@id': `${site.url}/#org` },
     mainEntityOfPage: `${site.url}/blog/${post.slug}`,
@@ -42,7 +46,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   return (
     <article>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, '\\u003c') }} />
+      <JsonLd data={schema} />
+      <JsonLd data={breadcrumbSchema([{ name: 'Insights', path: '/blog' }, { name: post.title, path: `/blog/${post.slug}` }])} />
       <header className="relative overflow-hidden bg-ink pb-16 pt-36 text-white sm:pt-44">
         <div className="grid-bg pointer-events-none absolute inset-0" />
         <div className="glow pointer-events-none absolute inset-0 opacity-70" />

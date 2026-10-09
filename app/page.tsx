@@ -11,6 +11,7 @@ import { SectionHead, serviceIcons, WhatsAppIcon } from '@/components/ui'
 import { serviceGroups, aiSearchFeatures, serviceCount } from '@/lib/services'
 import { comparison, faqs, industries, platforms, processSteps, site, whatsappLink } from '@/lib/site'
 import { formatDate, getPosts } from '@/lib/blog'
+import { serviceHref } from '@/lib/service-pages'
 
 const faqSchema = {
   '@context': 'https://schema.org',
@@ -147,7 +148,7 @@ export default function Home() {
               return (
                 <Link
                   key={g.id}
-                  href={`/services#${g.id}`}
+                  href={serviceHref(g.id)}
                   className={`reveal group relative flex flex-col overflow-hidden rounded-3xl border p-6 transition duration-500 hover:-translate-y-1 ${
                     featured ? 'border-white/[0.06] bg-ink text-white lg:col-span-2 lg:min-h-[260px]' : `card min-h-[240px] hover:border-mint/40 ${i >= 6 ? 'lg:col-span-2' : ''}`
                   }`}

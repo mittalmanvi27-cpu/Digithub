@@ -8,6 +8,7 @@ import { whatsappLink } from '@/lib/site'
 import { Markdown } from './markdown'
 import { readSSE } from './sse'
 import { WhatsAppIcon } from './ui'
+import { getAttribution, trackLead } from '@/lib/track'
 
 type Check = { id: string; label: string; status: 'pass' | 'warn' | 'fail'; detail: string }
 type Category = { id: string; label: string; score: number; checks: Check[] }
@@ -123,11 +124,13 @@ export function AuditTool() {
         website: result.url,
         service: 'Not sure yet',
         source: 'ai-audit',
+        attribution: getAttribution(),
         message: 'Requested a manual review after running the AI audit.',
         context: `AI audit score ${result.overall}/100 (${result.categories.map((c) => `${c.label} ${c.score}`).join(', ')}). Failing checks: ${issues.join('; ') || 'none'}.\n\n${report.slice(0, 2000)}`,
       }),
     }).catch(() => null)
     setLead(res?.ok ? 'sent' : 'idle')
+    if (res?.ok) trackLead('ai-audit')
     if (!res?.ok) alert('Couldn’t send — please WhatsApp us instead.')
   }
 

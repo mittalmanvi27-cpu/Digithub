@@ -28,12 +28,28 @@ All Claude calls use server-side refusal fallback (`fallbacks: "default"`), prom
 
 Static pre-rendering, `sitemap.xml`, `robots.txt`, a generated OG image, Organization + FAQ + BlogPosting JSON-LD, and `/llms.txt` (a plain-text brief for ChatGPT/Gemini/Perplexity). Old `.html` URLs (`/services.html`, `/blog/*.html`) 308-redirect to the new routes.
 
+**Service pages for SEO:** `/services/<slug>` gives each of the 8 disciplines its own URL, with a keyword-targeted title and H1, service FAQs, pricing, and Service + FAQPage + BreadcrumbList schema. Content lives in `lib/service-pages.ts`. Digi's knowledge base and `llms.txt` include these pages automatically.
+
+## PPC & conversion tracking
+
+| Piece | What it does |
+|---|---|
+| `/lp/seo-agency`, `/lp/google-ads-agency`, `/lp/website-design` | Ad landing pages: no main nav, short form above the fold, sticky call/WhatsApp bar, `noindex`. Point each ad group at the matching page and add your UTMs. Edit or add pages in `lib/landing-pages.ts`. |
+| Attribution | UTMs and gclid/gbraid/wbraid/fbclid are captured on landing (kept 90 days) and sent with every lead. They appear in the email, the webhook and the AI lead score ("google / cpc · seo-pune · “seo agency pune” · Google Ads click"). |
+| `/thank-you` | Every form submit lands here. The lead conversion fires once (refreshes don't double count). You can also use it as a URL-based goal. |
+| Events | `generate_lead` (form), `contact_click` (any tel:/WhatsApp/mailto tap) go to GTM's dataLayer or gtag; Google Ads conversions via `NEXT_PUBLIC_GADS_*_LABEL`; Meta Pixel `Lead` / `Contact`. |
+| Policy pages | `/privacy-policy` and `/terms`, which Google and Meta require for lead-gen ads. Have them reviewed for your business. |
+
+Set the `NEXT_PUBLIC_*` IDs in `.env.example` (in Vercel: Project → Settings → Environment Variables), then redeploy.
+
 ## Updating content
 
 | What | File |
 |---|---|
 | Contact details, FAQ, comparison table, industries | `lib/site.ts` |
 | Services (8 groups, 46 services) | `lib/services.ts` |
+| Service page copy, FAQs (SEO) | `lib/service-pages.ts` |
+| Ad landing pages (PPC) | `lib/landing-pages.ts` |
 | Pricing plans | `lib/pricing.ts` |
 | Extra facts for Digi (policies, timelines…) | `content/knowledge/company.md` |
 | Blog posts | add `content/blog/<slug>.md` with frontmatter `title, description, category, date, readTime` — Markdown or HTML body |

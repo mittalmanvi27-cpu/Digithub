@@ -5,6 +5,7 @@ import { serviceGroups, aiSearchFeatures } from './services'
 import { pricing } from './pricing'
 import { faqs, comparison, industries, processSteps as steps } from './site'
 import { getPosts } from './blog'
+import { serviceHref, servicePages } from './service-pages'
 
 /**
  * Retrieval layer for Digi: builds a small knowledge base from the site's own
@@ -97,7 +98,12 @@ class KnowledgeBase {
     }
 
     for (const g of serviceGroups) {
-      add(g.name, `/services#${g.id}`, `${g.name}: ${g.text} Services: ${g.items.map((i) => `${i.name} — ${i.text}`).join(' ')}`)
+      add(g.name, serviceHref(g.id), `${g.name}: ${g.text} Services: ${g.items.map((i) => `${i.name} — ${i.text}`).join(' ')}`)
+    }
+    for (const p of servicePages) {
+      const url = `/services/${p.slug}`
+      add(p.h1, url, `${p.intro} Good fit for: ${p.forWho.join('; ')}. ${p.outcomes.map((o) => `${o.title}: ${o.text}`).join(' ')} Process: ${p.steps.map((s) => `${s.title} — ${s.text}`).join(' ')}`)
+      for (const f of p.faqs) add(f.q, `${url}#faq`, `${f.q} ${f.a}`)
     }
     add('AI Search Optimisation', '/#ai-search', aiSearchFeatures.map((f) => `${f.k}: ${f.v}`).join(' '))
     for (const tab of pricing) {

@@ -3,6 +3,9 @@ import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import { ChatWidget } from '@/components/chat-widget'
+import { Analytics } from '@/components/analytics'
+import { HideOnLanding, MobileCta } from '@/components/mobile-cta'
+import { JsonLd } from '@/components/json-ld'
 import { site } from '@/lib/site'
 import { serviceGroups } from '@/lib/services'
 import './globals.css'
@@ -31,7 +34,8 @@ export const metadata: Metadata = {
     description: site.description,
   },
   twitter: { card: 'summary_large_image' },
-  robots: { index: true, follow: true },
+  robots: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  ...(process.env.NEXT_PUBLIC_GSC_VERIFICATION && { verification: { google: process.env.NEXT_PUBLIC_GSC_VERIFICATION } }),
 }
 
 export const viewport: Viewport = {
@@ -58,15 +62,30 @@ const orgSchema = {
   makesOffer: serviceGroups.map((g) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: g.name, description: g.text } })),
 }
 
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': `${site.url}/#website`,
+  name: site.name,
+  url: site.url,
+  inLanguage: 'en-IN',
+  publisher: { '@id': `${site.url}/#org` },
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IN" className={`${geist.variable} ${geistMono.variable} ${instrument.variable}`}>
-      <body>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema).replace(/</g, '\\u003c') }} />
+      <body className="pb-[68px] md:pb-0">
+        <JsonLd data={orgSchema} />
+        <JsonLd data={websiteSchema} />
         <Header />
         <main id="main">{children}</main>
-        <Footer />
+        <HideOnLanding>
+          <Footer />
+        </HideOnLanding>
+        <MobileCta />
         <ChatWidget />
+        <Analytics />
       </body>
     </html>
   )

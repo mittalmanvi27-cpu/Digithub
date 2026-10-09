@@ -115,13 +115,13 @@ export function ChatWidget() {
 
   return (
     <>
-      <div className={clsx('fixed bottom-5 right-5 z-40 flex items-center gap-3 transition-all duration-500 sm:bottom-6 sm:right-6', open && 'pointer-events-none translate-y-4 opacity-0')}>
+      <div className={clsx('fixed bottom-[84px] right-4 z-40 flex items-center gap-3 transition-all duration-500 md:bottom-6 md:right-6', open && 'pointer-events-none translate-y-4 opacity-0')}>
         <a
           href={whatsappLink('Hi Digitroot, I’d like to know more about your services.')}
           target="_blank"
           rel="noopener"
           aria-label="Chat on WhatsApp"
-          className="grid size-12 place-items-center rounded-full bg-[#25D366] text-white shadow-[0_12px_30px_-8px_rgb(37_211_102/0.6)] transition hover:scale-105"
+          className="hidden size-12 place-items-center rounded-full bg-[#25D366] md:grid text-white shadow-[0_12px_30px_-8px_rgb(37_211_102/0.6)] transition hover:scale-105"
         >
           <WhatsAppIcon className="size-6" />
         </a>

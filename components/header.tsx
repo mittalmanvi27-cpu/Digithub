@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { ArrowRight, ChevronDown, Menu, MessageCircle, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, Menu, MessageCircle, Phone, X } from 'lucide-react'
 import { serviceGroups, serviceCount } from '@/lib/services'
+import { serviceHref } from '@/lib/service-pages'
 import { site } from '@/lib/site'
 import { Logo, serviceIcons } from './ui'
 import { openChat } from './chat-widget'
@@ -34,6 +35,22 @@ export function Header() {
     document.documentElement.style.overflow = open ? 'hidden' : ''
   }, [open])
 
+  // Ad landing pages: logo + call button only, so paid visitors aren't pulled away from the form.
+  if (pathname.startsWith('/lp/')) {
+    return (
+      <header className={clsx('fixed inset-x-0 top-0 z-50 transition-[background] duration-500', scrolled ? 'border-b border-white/[0.07] bg-ink/85 backdrop-blur-xl' : 'bg-ink/0')}>
+        <div className="container-x flex h-[68px] items-center justify-between gap-4">
+          <span className="pointer-events-none">
+            <Logo dark />
+          </span>
+          <a href={site.phoneHref} data-track="lp-header" className="btn btn-mint py-2.5 text-[0.88rem]">
+            <Phone className="size-4" /> <span className="hidden sm:inline">Call</span> {site.phone}
+          </a>
+        </div>
+      </header>
+    )
+  }
+
   return (
     <header
       className={clsx(
@@ -58,7 +75,7 @@ export function Header() {
                   {serviceGroups.map((g) => {
                     const Icon = serviceIcons[g.icon]
                     return (
-                      <Link key={g.id} href={`/services#${g.id}`} className="group/item flex gap-3 rounded-2xl p-3 transition hover:bg-white/[0.05]">
+                      <Link key={g.id} href={serviceHref(g.id)} className="group/item flex gap-3 rounded-2xl p-3 transition hover:bg-white/[0.05]">
                         <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-mint transition group-hover/item:border-mint/40">
                           <Icon className="size-4" />
                         </span>
@@ -128,7 +145,7 @@ export function Header() {
             <p className="mt-6 px-1 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-white/40">Services</p>
             <div className="grid grid-cols-2 gap-1">
               {serviceGroups.map((g) => (
-                <Link key={g.id} href={`/services#${g.id}`} className="rounded-xl px-3 py-2.5 text-[0.9rem] text-white/80 hover:bg-white/5">
+                <Link key={g.id} href={serviceHref(g.id)} className="rounded-xl px-3 py-2.5 text-[0.9rem] text-white/80 hover:bg-white/5">
                   {g.name}
                 </Link>
               ))}

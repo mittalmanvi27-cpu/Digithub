@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { serviceGroups, serviceCount } from '@/lib/services'
 import { serviceIcons } from '@/components/ui'
+import { serviceHref } from '@/lib/service-pages'
 import { ChatButton } from '@/components/chat-button'
 
 export const metadata: Metadata = {
@@ -45,11 +46,18 @@ export default function ServicesPage() {
                   </span>
                   <span className="font-mono text-[0.75rem] text-faint">0{gi + 1}</span>
                 </div>
-                <h2 className="mt-6 text-[clamp(1.8rem,3.2vw,2.6rem)] font-medium leading-[1.05]">{g.name}</h2>
+                <h2 className="mt-6 text-[clamp(1.8rem,3.2vw,2.6rem)] font-medium leading-[1.05]">
+                  <Link href={serviceHref(g.id)} className="transition hover:text-mint-600">{g.name}</Link>
+                </h2>
                 <p className="mt-3 max-w-sm text-muted">{g.text}</p>
-                <Link href="/audit" className="mt-6 inline-flex items-center gap-1.5 text-[0.9rem] font-medium text-mint-600 hover:underline">
-                  Start with a free AI audit <ArrowRight className="size-4" />
-                </Link>
+                <div className="mt-6 flex flex-col items-start gap-2.5">
+                  <Link href={serviceHref(g.id)} className="btn btn-ink py-2.5 text-[0.88rem]">
+                    {g.name} — plans & FAQ <ArrowRight className="size-4" />
+                  </Link>
+                  <Link href="/audit" className="inline-flex items-center gap-1.5 text-[0.9rem] font-medium text-mint-600 hover:underline">
+                    Start with a free AI audit <ArrowRight className="size-4" />
+                  </Link>
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {g.items.map((s) => (
